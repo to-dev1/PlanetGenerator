@@ -714,7 +714,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 			}
 		}
 
-		testPlanet.draw(0, 0, (unsigned int*)bufferMemory, bufferWidth, bufferHeight);
+		testPlanet.draw(100, 100, (unsigned int*)bufferMemory, bufferWidth, bufferHeight);
 
 		//Render using Windows
 		StretchDIBits(hdc, 0, 0, bufferWidth, bufferHeight, 0, 0, bufferWidth, bufferHeight, bufferMemory, &bitmapInfo, DIB_RGB_COLORS, SRCCOPY);

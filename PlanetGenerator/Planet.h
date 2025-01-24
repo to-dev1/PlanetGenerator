@@ -12,11 +12,14 @@ public:
 	int diameter;
 	CellGrid<int> planetCells;
 	CellGrid<int> heightMap;
-	CellGrid<int> lightMap;
-	CellGrid<int> humidity;
+	CellGrid<float> elevation;
+	CellGrid<Color> mineral;
+	CellGrid<float> lightMap;
+	CellGrid<float> humidity;
+	CellGrid<float> water;
 	CellGrid<Color> colors;
 
-	Planet(int r = 100) : radius(r), diameter(r * 2), planetCells(diameter, diameter), heightMap(diameter, diameter), lightMap(diameter, diameter), humidity(diameter, diameter), colors(diameter, diameter)
+	Planet(int r = 100) : radius(r), diameter(r * 2), planetCells(diameter, diameter), heightMap(diameter, diameter), elevation(diameter, diameter), mineral(diameter, diameter), lightMap(diameter, diameter), humidity(diameter, diameter), water(diameter, diameter), colors(diameter, diameter)
 	{
 		//Initialize planet cells to create circle shape
 		for (int y = 0; y < planetCells.height; y++)

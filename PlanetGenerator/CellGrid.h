@@ -93,7 +93,8 @@ public:
 		}
 	}
 
-	void run(const std::function<void(int, int, T&)>& func, const CellGrid<int>& active)
+	template<typename Func>
+	void run(Func func, const CellGrid<int>& active) //void run(const std::function<void(int, int, T&)>& func, const CellGrid<int>& active)
 	{
 		for (int y = 0; y < height; y++)
 		{
