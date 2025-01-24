@@ -75,6 +75,7 @@ void Generator::generate(Planet& planet)
 	{
 		CellGrid<int> height = CellGrid<int>(planet.diameter, planet.diameter);
 		Color mineral = Color(100 + rn.next() % 100, 100 + rn.next() % 100, 100 + rn.next() % 100) * elevMulti;
+		Color flora = Color(50 + rn.next() % 100, 200 + rn.next() % 55, rn.next() % 255) * elevMulti;
 
 		height.call([&](int x, int y) {
 			return rn.next() % 4000 == 1;
@@ -98,6 +99,7 @@ void Generator::generate(Planet& planet)
 			float elev = static_cast<float>(height.read(x, y)) / static_cast<float>(greatestHeight);
 			h += elevMulti * elev;
 			planet.mineral.at(x, y) = planet.mineral.at(x, y) + mineral * elev;
+			planet.flora.at(x, y) = planet.flora.at(x, y) + flora * elev;
 		}, planet.planetCells);
 	}
 
@@ -127,50 +129,130 @@ void Generator::generate(Planet& planet)
 
 	//Light map
 
+	const float starMulti = 0.7f; //0.5f
 	planet.lightMap.call([&](int x, int y) {
 		int vy = y - planet.radius;
-		return std::sqrt(planet.radius * planet.radius - vy * vy) / static_cast<float>(planet.radius);
+		return (std::sqrt(planet.radius * planet.radius - vy * vy) / static_cast<float>(planet.radius) * 0.9f + 0.1f) * starMulti;
 	}, planet.planetCells);
 
 	//Humidity
 
-	const float humidityElevation = 0.85f;
+	const float atmosphere = 1.0f;
+	const float humidityElevation = 0.95f; //0.85f
 	planet.humidity.call([&](int x, int y) {
 		float h = planet.lightMap.read(x, y) * (humidityElevation - planet.elevation.read(x, y) * humidityElevation + (1.0f - humidityElevation));
-		return h;
+		return h * atmosphere;
+	}, planet.planetCells);
+
+	//Temperature
+
+	planet.temperature.call([&](int x, int y) {
+		float solar = planet.lightMap.read(x, y) * 2.0f;
+		return std::pow(solar, 1.0f - 0.4f * (atmosphere * planet.humidity.read(x, y))) * ((1.0f - planet.elevation.read(x, y) * 0.5f) + 0.5f);
 	}, planet.planetCells);
 
 	//Water
 
 	float waterElevation = 0.35f;
 	planet.water.run([&](int x, int y, float& w) {
-		if (planet.elevation.read(x, y) < waterElevation) w = waterElevation - planet.elevation.read(x, y);
-		else w = 0.0f;
-	}, planet.planetCells);
-
-
-
-	//Final color
-
-	Color waterColor = Color(50, 75, 100);
-	planet.colors.run([&](int x, int y, Color& col) {
-		col = planet.mineral.read(x, y);
-		float waterDepth = planet.water.read(x, y);
-		if (waterDepth > epsilon)
+		float temp = planet.temperature.read(x, y);
+		if (planet.elevation.read(x, y) < waterElevation)
 		{
-			//Water
-			float waterColMulti = std::min(0.3f + waterDepth * 2.0f, 1.0f);
-			col = col * (1.0f - waterColMulti) + waterColor * waterColMulti;
+			w = waterElevation - planet.elevation.read(x, y);
+		}
+		else if (temp < 1.0f)
+		{
+			w = -std::min(planet.humidity.read(x, y) / (temp), 1.0f);
 		}
 		else
 		{
-
+			w = 0.0f;
 		}
 	}, planet.planetCells);
 
+	//Habitability
+
+	float minHabitability = 0.3f;
+	planet.habitability.run([&](int x, int y, float& h) {
+		float temp = planet.temperature.read(x, y);
+		if (std::abs(planet.water.read(x, y)) < epsilon)
+		{
+			h = temp * planet.humidity.read(x, y);
+		}
+		else
+		{
+			h = 0.0f;
+		}
+
+		if (h < minHabitability) h = 0.0f;
+		else h = std::sqrt(h);
+
+	}, planet.planetCells);
+
+	//Flora
+	/*
+	planet.flora.run([&](int x, int y, Color& f) {
+		float habitability = planet.habitability.read(x, y);
+		if (std::abs(planet.water.read(x, y)) < epsilon)
+		{
+			//w = waterElevation - planet.elevation.read(x, y);
+		}
+		else
+		{
+			f = Color();
+		}
+	}, planet.planetCells);
+	*/
+
+	//Final color
+	
+	Color waterColor = Color(50, 75, 100);
+	Color deepWaterColor = Color(20, 30, 60); //Color(10, 20, 40);
+	Color iceColor = Color(150, 220, 255);
+	Color snowColor = Color(255, 255, 255);
+	planet.colors.run([&](int x, int y, Color& col) {
+		col = planet.mineral.read(x, y);
+		float waterDepth = planet.water.read(x, y);
+		if (waterDepth < epsilon)
+		{
+			//Snow
+			float snowColMulti = -waterDepth;
+			col = col * (1.0f - snowColMulti) + snowColor * snowColMulti;
+		}
+		if (waterDepth > epsilon)
+		{
+			//Water
+			if (planet.temperature.read(x, y) > 1.0f)
+			{
+				//Liquid
+				float waterColMulti = std::min(0.3f + waterDepth * 2.0f, 1.0f);
+				waterColMulti = std::cbrt(waterColMulti);
+				Color depthColor = waterColor * (1.0f - waterColMulti) + deepWaterColor * waterColMulti;
+				col = col * (1.0f - waterColMulti) + depthColor * waterColMulti;
+			}
+			else
+			{
+				//Ice
+				float iceColMulti = 0.8f;
+				col = iceColor * iceColMulti * (0.25f + planet.elevation.read(x, y) * 0.75f);
+			}
+		}
+		else
+		{
+			//Terrain
+			float habitability = std::min(planet.habitability.read(x, y) * 2.0f, 1.0f);
+			col = col * (1.0f - habitability) + planet.flora.read(x, y) * habitability;
+		}
+	}, planet.planetCells);
+	
 	/*
 	planet.colors.call([&](int x, int y){
-		return Color(static_cast<int>(planet.water.read(x, y) * 255.0f), 0, 0);
+		return Color(static_cast<int>(planet.habitability.read(x, y) * 255.0f), 0, 0);
+	}, planet.planetCells);
+	*/
+	/*
+	planet.colors.run([&](int x, int y, Color& col) {
+		if (planet.humidity.read(x, y) > 0.0f) col = Color(255, 255, 255);
 	}, planet.planetCells);
 	*/
 	/*
