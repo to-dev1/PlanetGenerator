@@ -24,10 +24,10 @@ void Planet::draw(int x, int y, unsigned int* pixels, int width, int height) con
 	int ly = std::min(y + diameter, height);
 
 	int gy = 0;
-	for (int py = y; py < ly; py++)
+	for (int py = std::max(y, 0); py < ly; py++)
 	{
 		int gx = 0;
-		for (int px = x; px < lx; px++)
+		for (int px = std::max(x, 0); px < lx; px++)
 		{
 			int pos = px + py * width;
 			unsigned int col = colors.read(gx, gy).toInt();

@@ -15,9 +15,24 @@ unsigned int Color::toInt() const
 	return (static_cast<unsigned int>(r) << 16) + (static_cast<unsigned int>(g) << 8) + (static_cast<unsigned int>(b));
 }
 
+float Vector2::magnitudeSqr() const
+{
+	return x * x + y * y;
+}
+
+float Vector2::sqrDist(const Vector2& v) const
+{
+	return (*this - v).magnitudeSqr();
+}
+
 Vector2 Vector2::operator+(const Vector2& v) const
 {
 	return Vector2(x + v.x, y + v.y);
+}
+
+Vector2 Vector2::operator-(const Vector2& v) const
+{
+	return Vector2(x - v.x, y - v.y);
 }
 
 Vector2& Vector2::operator+=(const Vector2& v)

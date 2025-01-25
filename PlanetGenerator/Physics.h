@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <cmath>
 
 #include "Utility.h"
 
@@ -33,6 +34,8 @@ public:
 	World(const World& w);
 	World& operator=(const World& w);
 	~World();
+
+	void add(PhysicsObject* obj);
 
 	void update(float deltaTime);
 

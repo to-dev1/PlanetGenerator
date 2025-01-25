@@ -25,7 +25,11 @@ public:
 
 	Vector2(float vx = 0.0f, float vy = 0.0f) : x(vx), y(vy) {};
 
+	float magnitudeSqr() const;
+	float sqrDist(const Vector2& v) const;
+
 	Vector2 operator+(const Vector2& v) const;
+	Vector2 operator-(const Vector2& v) const;
 	Vector2& operator+=(const Vector2& v);
 	Vector2 operator*(float m) const;
 };

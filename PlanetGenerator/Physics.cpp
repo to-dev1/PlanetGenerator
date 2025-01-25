@@ -5,7 +5,15 @@ void PhysicsObject::update(float deltaTime, std::vector<PhysicsObject*>& objects
 	//Velocity
 	position += velocity * deltaTime;
 
-
+	//Gravity
+	for (auto it : objects)
+	{
+		if (it != this)
+		{
+			Vector2 dir = it->position - position;
+			velocity += dir * (1.0f / std::sqrt(dir.magnitudeSqr())) * (it->mass / dir.magnitudeSqr());
+		}
+	}
 }
 
 World::World(const World& w)
@@ -38,6 +46,11 @@ World::~World()
 	{
 		delete it;
 	}
+}
+
+void World::add(PhysicsObject* obj)
+{
+	objects.push_back(obj);
 }
 
 void World::update(float deltaTime)
