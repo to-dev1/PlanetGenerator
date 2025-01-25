@@ -18,7 +18,7 @@ void Planet::draw(int x, int y, CellGrid<int>& pixels)
 	}
 }
 
-void Planet::draw(int x, int y, unsigned int* pixels, int width, int height)
+void Planet::draw(int x, int y, unsigned int* pixels, int width, int height) const
 {
 	int lx = std::min(x + diameter, width);
 	int ly = std::min(y + diameter, height);
@@ -39,6 +39,14 @@ void Planet::draw(int x, int y, unsigned int* pixels, int width, int height)
 		}
 		gy++;
 	}
+}
+
+void Planet::render(unsigned int* pixels, int width, int height) const
+{
+	int x = static_cast<int>(position.x) - radius;
+	int y = static_cast<int>(position.y) - radius;
+
+	draw(x, y, pixels, width, height);
 }
 
 Generator::Generator(int s)
@@ -129,7 +137,8 @@ void Generator::generate(Planet& planet)
 
 	//Light map
 
-	const float starMulti = 0.7f; //0.5f
+	const Color starColor = Color(255, 220, 200);
+	const float starMulti = 1.0f; //0.5f
 	planet.lightMap.call([&](int x, int y) {
 		int vy = y - planet.radius;
 		return (std::sqrt(planet.radius * planet.radius - vy * vy) / static_cast<float>(planet.radius) * 0.9f + 0.1f) * starMulti;
@@ -140,15 +149,25 @@ void Generator::generate(Planet& planet)
 	const float atmosphere = 1.0f;
 	const float humidityElevation = 0.95f; //0.85f
 	planet.humidity.call([&](int x, int y) {
-		float h = planet.lightMap.read(x, y) * (humidityElevation - planet.elevation.read(x, y) * humidityElevation + (1.0f - humidityElevation));
+		float solar = planet.lightMap.read(x, y);
+		float h = solar * (humidityElevation - planet.elevation.read(x, y) * humidityElevation + (1.0f - humidityElevation));
+		if (solar > 1.0f)
+		{
+			h = h / (solar * solar);
+		}
 		return h * atmosphere;
 	}, planet.planetCells);
 
 	//Temperature
 
+	const float freezingPoint = 1.0f;
+	const float boilingPoint = 10.0f;
+	float maxTemperature = 0.0f;
 	planet.temperature.call([&](int x, int y) {
 		float solar = planet.lightMap.read(x, y) * 2.0f;
-		return std::pow(solar, 1.0f - 0.4f * (atmosphere * planet.humidity.read(x, y))) * ((1.0f - planet.elevation.read(x, y) * 0.5f) + 0.5f);
+		float temp = std::pow(solar, 1.0f - 0.4f * (atmosphere * planet.humidity.read(x, y))) * ((1.0f - planet.elevation.read(x, y) * 0.5f) + 0.5f);
+		maxTemperature = std::max(temp, maxTemperature);
+		return temp;
 	}, planet.planetCells);
 
 	//Water
@@ -175,9 +194,10 @@ void Generator::generate(Planet& planet)
 	float minHabitability = 0.3f;
 	planet.habitability.run([&](int x, int y, float& h) {
 		float temp = planet.temperature.read(x, y);
-		if (std::abs(planet.water.read(x, y)) < epsilon)
+		if (std::abs(planet.water.read(x, y)) < epsilon && maxTemperature < boilingPoint)
 		{
-			h = temp * planet.humidity.read(x, y);
+			//h = temp * planet.humidity.read(x, y);
+			h = planet.humidity.read(x, y);
 		}
 		else
 		{
@@ -219,10 +239,10 @@ void Generator::generate(Planet& planet)
 			float snowColMulti = -waterDepth;
 			col = col * (1.0f - snowColMulti) + snowColor * snowColMulti;
 		}
-		if (waterDepth > epsilon)
+		if (waterDepth > epsilon && maxTemperature < boilingPoint)
 		{
 			//Water
-			if (planet.temperature.read(x, y) > 1.0f)
+			if (planet.temperature.read(x, y) > freezingPoint)
 			{
 				//Liquid
 				float waterColMulti = std::min(0.3f + waterDepth * 2.0f, 1.0f);
@@ -243,6 +263,11 @@ void Generator::generate(Planet& planet)
 			float habitability = std::min(planet.habitability.read(x, y) * 2.0f, 1.0f);
 			col = col * (1.0f - habitability) + planet.flora.read(x, y) * habitability;
 		}
+
+		//Star color
+		float solarMulti = 1.0f - 1.0f / std::max(starMulti, 1.0f);
+		//col = col * (1.0f - solarMulti) + starColor * solarMulti;
+
 	}, planet.planetCells);
 	
 	/*

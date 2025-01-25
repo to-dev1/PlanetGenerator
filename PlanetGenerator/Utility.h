@@ -17,6 +17,19 @@ public:
 	unsigned int toInt() const;
 };
 
+class Vector2
+{
+public:
+	float x;
+	float y;
+
+	Vector2(float vx = 0.0f, float vy = 0.0f) : x(vx), y(vy) {};
+
+	Vector2 operator+(const Vector2& v) const;
+	Vector2& operator+=(const Vector2& v);
+	Vector2 operator*(float m) const;
+};
+
 class Random
 {
 public:

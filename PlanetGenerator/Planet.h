@@ -4,8 +4,9 @@
 
 #include "Utility.h"
 #include "CellGrid.h"
+#include "Physics.h"
 
-class Planet
+class Planet : public PhysicsObject
 {
 public:
 	int radius; //Planet radius in pixels
@@ -22,7 +23,7 @@ public:
 	CellGrid<Color> flora;
 	CellGrid<Color> colors;
 
-	Planet(int r = 100) : radius(r), diameter(r * 2), planetCells(diameter, diameter), heightMap(diameter, diameter), elevation(diameter, diameter), mineral(diameter, diameter), lightMap(diameter, diameter), humidity(diameter, diameter), temperature(diameter, diameter), water(diameter, diameter), habitability(diameter, diameter), flora(diameter, diameter), colors(diameter, diameter)
+	Planet(int r = 100, const Vector2& pos = Vector2(), const Vector2& vel = Vector2()) : PhysicsObject(pos, vel, r * r), radius(r), diameter(r * 2), planetCells(diameter, diameter), heightMap(diameter, diameter), elevation(diameter, diameter), mineral(diameter, diameter), lightMap(diameter, diameter), humidity(diameter, diameter), temperature(diameter, diameter), water(diameter, diameter), habitability(diameter, diameter), flora(diameter, diameter), colors(diameter, diameter)
 	{
 		//Initialize planet cells to create circle shape
 		for (int y = 0; y < planetCells.height; y++)
@@ -41,7 +42,9 @@ public:
 	}
 
 	void draw(int x, int y, CellGrid<int>& pixels);
-	void draw(int x, int y, unsigned int* pixels, int width, int height);
+	void draw(int x, int y, unsigned int* pixels, int width, int height) const;
+
+	virtual void render(unsigned int* pixels, int width, int height) const override;
 };
 
 class Generator
