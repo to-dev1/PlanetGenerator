@@ -91,9 +91,13 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 	Planet* planet2 = new Planet(30, Vector2(1200, 500), Vector2(0, 150));
 	generator.generate(*planet2);
 
+	Planet* planet3 = new Planet(30, Vector2(400, 500), Vector2(0, -150));
+	generator.generate(*planet3);
+
 	World world = World();
 	world.add(testPlanet);
 	world.add(planet2);
+	//world.add(planet3);
 
 	//done
 	

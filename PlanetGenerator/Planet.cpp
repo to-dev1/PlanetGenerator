@@ -224,8 +224,48 @@ void Generator::generate(Planet& planet)
 	}, planet.planetCells);
 	*/
 
+	//Atmosphere and clouds
+
+	int atmoCount = 3;
+	float atmoMulti = 1.0f / static_cast<float>(atmoCount);
+	for (int j = 0; j < atmoCount; j++)
+	{
+		CellGrid<int> atmosphere = CellGrid<int>(planet.diameter, planet.diameter);
+		Color composition = Color(200 + rn.next() % 55, 200 + rn.next() % 55, 200 + rn.next() % 55) * atmoMulti;
+
+		int frequency = 200 + rn.next() % 800;
+
+		atmosphere.call([&](int x, int y) {
+			return rn.next() % frequency == 1;
+		}, planet.planetCells);
+
+		int greatestAtmosphere = 0;
+
+		for (int i = 0; i < 1000; i++)
+		{
+			CellGrid<int> tmp = atmosphere;
+
+			atmosphere.run([&](int x, int y, int& h) {
+				if (h != 0 && rn.next() % 15 == 1) tmp.setAround(x, y, h + 1, tmp);
+				if (h >= greatestAtmosphere) greatestAtmosphere = h + 1;
+			}, planet.planetCells);
+
+			atmosphere.copy(tmp);
+		}
+
+		planet.clouds.run([&](int x, int y, float& h) {
+			float atmo = static_cast<float>(atmosphere.read(x, y)) / static_cast<float>(greatestAtmosphere);
+			h += atmo * atmoMulti * planet.humidity.at(x, y);
+			float colMulti = atmo * 2.0f;
+			float maxCol = std::min(1.0f - planet.atmosphereColors.read(x, y), colMulti);
+			planet.atmosphere.at(x, y) = planet.atmosphere.at(x, y) + composition * maxCol;
+		}, planet.planetCells);
+	}
+
 	//Final color
 	
+	float minClouds = 0.2f;
+
 	Color waterColor = Color(50, 75, 100);
 	Color deepWaterColor = Color(20, 30, 60); //Color(10, 20, 40);
 	Color iceColor = Color(150, 220, 255);
@@ -268,6 +308,15 @@ void Generator::generate(Planet& planet)
 		float solarMulti = 1.0f - 1.0f / std::max(starMulti, 1.0f);
 		//col = col * (1.0f - solarMulti) + starColor * solarMulti;
 
+		//Atmosphere
+		float clouds = planet.clouds.read(x, y);
+		if (clouds > minClouds)
+		{
+			float clouldMulti = std::min(clouds * 3.0f, 1.0f);
+			col = col * (1.0f - clouldMulti) + planet.atmosphere.read(x, y) * clouldMulti;
+			//col = planet.atmosphere.read(x, y);
+		}
+
 	}, planet.planetCells);
 	
 	/*
@@ -282,7 +331,8 @@ void Generator::generate(Planet& planet)
 	*/
 	/*
 	planet.colors.call([&](int x, int y) {
-		return planet.mineral.read(x, y);
+		if(planet.clouds.read(x, y) > 0.2f) return planet.atmosphere.read(x, y);
+		return Color();
 	}, planet.planetCells);
 	*/
 }
